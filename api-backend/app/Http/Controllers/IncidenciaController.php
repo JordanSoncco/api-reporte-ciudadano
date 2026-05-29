@@ -42,7 +42,7 @@ class IncidenciaController extends Controller
         ], 201);
     }
 
-    // 3. EDITAR ESTADO (PUT) - Cambia de Pendiente a Resuelto
+    // 3. EDITAR (PUT) - Actualiza título, descripción o estado
     public function update(Request $request, $id)
     {
         $incidencia = Incidencia::find($id);
@@ -50,20 +50,34 @@ class IncidenciaController extends Controller
             return response()->json(['mensaje' => 'No encontrada'], 404);
         }
 
-        $incidencia->estado = $request->estado ?? $incidencia->estado;
+        // Usamos fill() para actualizar solo los campos que vengan en la petición (titulo, descripcion, o estado)
+        $incidencia->fill($request->only(['titulo', 'descripcion', 'estado']));
         $incidencia->save();
 
-        return response()->json(['mensaje' => 'Estado actualizado', 'data' => $incidencia], 200);
+        return response()->json([
+            'mensaje' => 'Incidencia actualizada correctamente', 
+            'data' => $incidencia
+        ], 200);
     }
 
-    // 4. ELIMINAR (DELETE) - Borra el reporte
+    // 4. ELIMINAR (DELETE) - Borra el reporte y la imagen del servidor
     public function destroy($id)
     {
         $incidencia = Incidencia::find($id);
-        if ($incidencia) {
-            $incidencia->delete();
-            return response()->json(['mensaje' => 'Incidencia eliminada'], 200);
+        
+        if (!$incidencia) {
+            return response()->json(['mensaje' => 'No encontrada'], 404);
         }
-        return response()->json(['mensaje' => 'No encontrada'], 404);
+
+        // Buena práctica: Borrar la imagen física del disco duro de AWS para liberar espacio
+        if ($incidencia->imagen_ruta) {
+            // El texto viene como "storage/incidencias/foto.jpg". 
+            // Necesitamos quitarle la palabra "storage/" para que AWS lo encuentre
+            $rutaRelativa = str_replace('storage/', '', $incidencia->imagen_ruta);
+            Storage::disk('public')->delete($rutaRelativa);
+        }
+
+        $incidencia->delete();
+        return response()->json(['mensaje' => 'Incidencia y archivos eliminados con éxito'], 200);
     }
 }
