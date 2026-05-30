@@ -18,28 +18,37 @@ class IncidenciaController extends Controller
     // 2. CREAR (POST) - Guarda una nueva incidencia con imagen
     public function store(Request $request)
     {
+        // 1. Validamos los datos (sin exigir el user_id desde Flutter)
         $request->validate([
-            'user_id' => 'required|integer',
-            'titulo' => 'required|string|max:100',
+            'titulo' => 'required|string',
             'descripcion' => 'required|string',
-            'latitud' => 'required|string',
-            'longitud' => 'required|string',
-            'imagen' => 'nullable|image' // Valida que sea un archivo de imagen
+            'latitud' => 'required',
+            'longitud' => 'required',
+            'imagen' => 'required|image'
         ]);
 
-        $data = $request->all();
+        // 2. Procesamos y guardamos la imagen en la carpeta uploads
+        $imageName = time() . '.' . $request->imagen->extension();
+        $request->imagen->move(public_path('uploads'), $imageName);
 
-        // Si viene una imagen desde Flutter, la guardamos en el servidor
-        if ($request->hasFile('imagen')) {
-            $ruta = $request->file('imagen')->store('incidencias', 'public');
-            $data['imagen_ruta'] = 'storage/' . $ruta;
-        }
+        // 3. Creamos el registro
+        $incidencia = new \App\Models\Incidencia();
+        $incidencia->titulo = $request->titulo;
+        $incidencia->descripcion = $request->descripcion;
+        $incidencia->estado = 'Pendiente';
+        $incidencia->latitud = $request->latitud;
+        $incidencia->longitud = $request->longitud;
+        $incidencia->imagen_ruta = 'uploads/' . $imageName;
+        
+        // 4. MAGIA DE SANCTUM: Asignamos el reporte al usuario dueño del Token
+        $incidencia->user_id = auth('sanctum')->id();
 
-        $incidencia = Incidencia::create($data);
+        $incidencia->save();
+
         return response()->json([
-            'mensaje' => 'Incidencia reportada con exito',
-            'data' => $incidencia
-        ], 201);
+            'mensaje' => 'Incidencia creada con éxito',
+            'incidencia' => $incidencia
+        ], 201); // Devolvemos 201 (Created)
     }
 
     // 3. EDITAR (PUT) - Actualiza título, descripción o estado

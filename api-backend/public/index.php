@@ -1,5 +1,11 @@
 <?php
 
+// --- BYPASS DE SEGURIDAD PARA APACHE ---
+if (isset($_SERVER['HTTP_X_AUTHORIZATION'])) {
+    $_SERVER['HTTP_AUTHORIZATION'] = $_SERVER['HTTP_X_AUTHORIZATION'];
+}
+// ---------------------------------------
+
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
