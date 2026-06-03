@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Incidencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 
 class IncidenciaController extends Controller
 {
@@ -104,21 +105,21 @@ class IncidenciaController extends Controller
     // 4. ELIMINAR (DELETE) - Borra el reporte y la imagen del servidor
     public function destroy($id)
     {
-        $incidencia = Incidencia::find($id);
-        
+        $incidencia = \App\Models\Incidencia::find($id);
+
         if (!$incidencia) {
-            return response()->json(['mensaje' => 'No encontrada'], 404);
+            return response()->json(['mensaje' => 'No encontrado'], 404);
         }
 
-        // Buena práctica: Borrar la imagen física del disco duro de AWS para liberar espacio
-        if ($incidencia->imagen_ruta) {
-            // El texto viene como "storage/incidencias/foto.jpg". 
-            // Necesitamos quitarle la palabra "storage/" para que AWS lo encuentre
-            $rutaRelativa = str_replace('storage/', '', $incidencia->imagen_ruta);
-            Storage::disk('public')->delete($rutaRelativa);
+        // --- NUEVO: ELIMINAR LA FOTO FÍSICA DEL SERVIDOR ---
+        // Verificamos si tiene una ruta de imagen y si el archivo realmente existe en la carpeta public
+        if ($incidencia->imagen_ruta && File::exists(public_path($incidencia->imagen_ruta))) {
+            File::delete(public_path($incidencia->imagen_ruta));
         }
 
+        // Eliminamos el registro de la base de datos
         $incidencia->delete();
-        return response()->json(['mensaje' => 'Incidencia y archivos eliminados con éxito'], 200);
+
+        return response()->json(['mensaje' => 'Eliminado correctamente'], 200);
     }
 }
